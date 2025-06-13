@@ -1,74 +1,73 @@
 # RWKV-LM-V7
+## 项目介绍
+让任何研究者在15分钟内开始预训练一个完全对齐的RWKV v7模型。当然不包括下载数据 :) 
 
-## Project Introduction
-This project allows any researcher to start pre-training a fully aligned RWKV v7 model within 15 minutes. Of course, this does not include the time to download the data :)
+所有的代码来源于原始 RWKV-LM 项目， https://github.com/BlinkDL/RWKV-LM
 
-All code is sourced from the original RWKV-LM project: https://github.com/BlinkDL/RWKV-LM
+此仓库适合快速的在英伟达显卡上使用样例数据或私有数据小规模的复现 RWKV v7 系列模型，例如191M~3B等大小，我们接下来会重点改善：
 
-This repository is suitable for quickly reproducing small-scale RWKV v7 series models (e.g., 191M to 3B) on NVIDIA GPUs using either sample data or private data. We will focus on the following improvements next:
+- 提供 RWKV 系列模型在多模态等任务的模板代码
+- 提供跨平台的内核实现
+- 提供可配置的 RWKV Layer 类
+- 提供高性能的 Pytorch 推理实现
+- 提供适合 3-70B 的集群训练框架及脚本
 
--   Provide template code for RWKV series models for tasks such as multimodal applications.
--   Provide cross-platform kernel implementations.
--   Provide a configurable RWKV Layer class.
--   Provide a high-performance PyTorch inference implementation.
--   Provide a cluster training framework and scripts suitable for models from 3B to 70B.
-
-We love and give back to the open-source community and appreciate any implementations from it. If you find any issues in our code repository, including but not limited to code quality, code style, code interpretability, or numerical precision errors, you are welcome to submit an issue.
+我们热爱并回馈开源社区，感谢任何开源社区的实现。如果您发现我们的代码仓库有包含但不限于：代码质量，代码风格，代码可解释性，数值精度误差的问题，欢迎提交 issue。
 
 > [!WARNING]
-> Note: This is WIP (very likely correct, and more efficient). On the other hand, you can still use [RWKV-LM](https://github.com/BlinkDL/RWKV-LM/tree/main/RWKV-v7/train_temp) as reference implementation.
+> Note: 整个仓库仍处于 WIP 阶段(与基线相比，我们改进了融合算子的使用，计算更高效). 如果您有所顾虑， 您可以使用 [RWKV-LM](https://github.com/BlinkDL/RWKV-LM/tree/main/RWKV-v7/train_temp) 作为参考实现.
 
-[Chinese Version/中文版本](./README_CN.md)
+## 如何开始？
 
-## How to start?
-
-### Prepare Environment
-To prepare the environment, please use a conda-compatible package manager like miniforge to create a new environment.
+### 准备环境
+环境准备，请使用miniforge等conda兼容包管理器，创建一个全新的环境
 ```
 conda create -n rwkv-lm-v7 python=3.12
 conda activate rwkv-lm-v7
 ```
-Next, install the following dependencies. Please note that `pytorch-lightning` is fixed at version `1.9.5`. This is a specific requirement for this repository; do not upgrade this package.
+
+随后安装下列依赖，请注意，pytorch-lightning 固定使用了 1.9.5 版本，此为本仓库特性，请不要升级此依赖包。
 ```
 pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
 pip3 install -r requirements.txt
 ```
-### Download Data
+
+### 下载数据
 ```
 cd data
 wget --continue -O data/minipile.idx https://huggingface.co/datasets/BlinkDL/minipile-tokenized/resolve/main/rwkv_vocab_v20230424/minipile.idx
 wget --continue -O data/minipile.bin https://huggingface.co/datasets/BlinkDL/minipile-tokenized/resolve/main/rwkv_vocab_v20230424/minipile.bin
 
 ```
-### Start Training
 
-1. Initialize an empty RWKV7 model
+### 开始训练
+
+1. 初始化空 RWKV7 模型
 ```
 sh ./demo-training-prepare.sh
 ```
 
-2. Log in to your wandb account
+2. 登录wandb账号
 
-3. Start training
+3. 开始训练
 ```
 sh ./demo-training-run.sh
 ```
 
-## Detailed Explanation
+## 详细解释
 
-This section contains explanations of model initialization, learning rates, and other details.
-RWKV7 uses initializations that are both theoretically designed with mathematical proof and empirically derived from training results to accelerate model convergence and improve performance.
+此章节包含模型初始化、学习率及细节解释。
+RWKV7使用了包含经过设计和数学论证的初始化和基于训练结果分析的初始化，加速模型收敛及其性能。
 
 ### L2Warp
-This type of penalty prevents the model from becoming overconfident, thereby mitigating precision loss in BF16.
+此类惩罚模型，避免模型过度自信，从而缓解BF16中间的精度损失。
 
-### Weights and Initialization Example
-Please pay close attention to the learning rate and related settings in the context.
-```python
+### 权重及其初始化样例
+请严格注意上下文学习率等相关设置。
+```
 self.k_k = nn.Parameter(torch.zeros(1, 1, C)+0.71 - linear*0.1)
 self.k_a = nn.Parameter(torch.zeros(1, 1, C)+1.02)
 ```
-
 
 RWKV-7 weight example for 1.5B (L24-D2048, vocab 65536):
 | name                | shape         | comment      | initialization  |
@@ -116,8 +115,8 @@ RWKV-7 weight example for 1.5B (L24-D2048, vocab 65536):
 | ln_out.bias   | [2048]        |        | 0         |
 | head.weight   | [65536, 2048] | wdecay | see code  |
 
-## Check Result
-your out/....../train_log.txt should have losses similar to:
+## 检查结果
+在 out/....../train_log.txt 路径下，您的损失应该非常接近:
 ```
 0 4.875856 131.0863 0.00059975 2025-04-24 02:23:42.481256 0
 1 4.028621 56.1834 0.00059899 2025-04-24 02:28:16.674463 1
